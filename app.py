@@ -2,7 +2,7 @@ import os
 import json
 import random
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify, send_from_directory,redirect
+from flask import Flask, request, jsonify, send_from_directory, redirect
 import requests
 from flask_cors import CORS
 
@@ -131,7 +131,7 @@ def music_suggest():
                         "spotify_embed": "https://open.spotify.com/embed/playlist/37i9dQZF1DX4o1oenSJRJd"
                     }
                 },
-"tamil": {
+                "tamil": {
                     "lofi": {
                         "youtube": "https://www.youtube.com/embed/MGQ5m0QdCjE?autoplay=1",
                         "spotify": "https://open.spotify.com/playlist/1E1j2PbaSW1byDCxtaiGlg",
@@ -154,10 +154,6 @@ def music_suggest():
                     }
                 }
             },
-
-            # ----------------------------------------------------
-            #  CALM
-            # ----------------------------------------------------
             "calm": {
                 "english": {
                     "lofi": {
@@ -181,8 +177,7 @@ def music_suggest():
                         "spotify_embed": "https://open.spotify.com/embed/playlist/37i9dQZF1DX6VdMW310YC7"
                     }
                 },
-
-"tamil": {
+                "tamil": {
                     "lofi": {
                         "youtube": "https://www.youtube.com/embed/MGQ5m0QdCjE?autoplay=1",
                         "spotify": "https://open.spotify.com/playlist/1E1j2PbaSW1byDCxtaiGlg",
@@ -205,10 +200,6 @@ def music_suggest():
                     }
                 }
             },
-
-            # ----------------------------------------------------
-            #  ENERGETIC
-            # ----------------------------------------------------
             "energetic": {
                 "english": {
                     "lofi": {
@@ -232,8 +223,7 @@ def music_suggest():
                         "spotify_embed": "https://open.spotify.com/embed/playlist/37i9dQZF1DX2pSTOxoPbx9"
                     }
                 },
-
-"tamil": {
+                "tamil": {
                     "lofi": {
                         "youtube": "https://www.youtube.com/embed/MGQ5m0QdCjE?autoplay=1",
                         "spotify": "https://open.spotify.com/playlist/1E1j2PbaSW1byDCxtaiGlg",
@@ -256,10 +246,6 @@ def music_suggest():
                     }
                 }
             },
-
-            # ----------------------------------------------------
-            #  MELANCHOLY
-            # ----------------------------------------------------
             "melancholy": {
                 "english": {
                     "lofi": {
@@ -283,7 +269,6 @@ def music_suggest():
                         "spotify_embed": "https://open.spotify.com/embed/playlist/37i9dQZF1DX2pNb5XG6XQH"
                     }
                 },
-
                 "tamil": {
                     "lofi": {
                         "youtube": "https://www.youtube.com/embed/MGQ5m0QdCjE?autoplay=1",
@@ -385,4 +370,4 @@ if __name__ == '__main__':
     print(f"🤖 Model: {OPENROUTER_MODEL}")
     print("🌐 Server running at: http://localhost:5000")
     
-    app.run(host='0.0.0.0', port=int(os.getenv("PORT",
+    app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)), debug=True)
