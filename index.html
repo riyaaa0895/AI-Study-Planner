@@ -562,17 +562,21 @@
 // ENCRYPTED .DAT FILE STORAGE WITH AUTO-INDEXING
 // ===============================
 
-// Simple encryption utilities
 const ENCRYPTION_KEY = 'study-app-secure-key-2024';
 
 const encrypt = (text) => {
-    let result = '';
-    for (let i = 0; i < text.length; i++) {
-        result += String.fromCharCode(
-            text.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length)
-        );
+    try {
+        const encodedText = encodeURIComponent(text);
+        let result = '';
+        for (let i = 0; i < encodedText.length; i++) {
+            result += String.fromCharCode(
+                encodedText.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length)
+            );
+        }
+        return btoa(result);
+    } catch (e) {
+        return null;
     }
-    return btoa(result);
 };
 
 const decrypt = (encryptedText) => {
@@ -584,14 +588,13 @@ const decrypt = (encryptedText) => {
                 decoded.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length)
             );
         }
-        return result;
+        return decodeURIComponent(result);
     } catch (err) {
         console.warn("Decryption failed:", err);
         return null;
     }
 };
 
-// File operations using File System Access API with fallback
 class EncryptedStorage {
     constructor() {
         this.fileHandle = null;
@@ -603,7 +606,6 @@ class EncryptedStorage {
 
     async init() {
         try {
-            // Try to load existing data file
             await this.loadDataFile();
             this.isReady = true;
             console.log("Encrypted storage initialized successfully");
@@ -615,9 +617,7 @@ class EncryptedStorage {
 
     async loadDataFile() {
         try {
-            // Check if File System Access API is supported
             if ('showOpenFilePicker' in window) {
-                // Try to load from previous session
                 const existingData = localStorage.getItem('encrypted_storage_backup');
                 if (existingData) {
                     const decrypted = decrypt(existingData);
@@ -630,8 +630,6 @@ class EncryptedStorage {
                     }
                 }
             }
-            
-            // Fallback to localStorage with encryption
             this.loadFromLocalStorage();
         } catch (err) {
             console.warn("Failed to load data file:", err);
@@ -678,21 +676,15 @@ class EncryptedStorage {
     async save(key, data) {
         try {
             this.dataCache[key] = data;
-            
-            // Update index
             this.dataIndex[key] = {
                 index: Object.keys(this.dataIndex).length,
                 lastModified: Date.now(),
                 size: JSON.stringify(data).length
             };
 
-            // Save encrypted data
             const encryptedData = encrypt(JSON.stringify(data));
             localStorage.setItem(`encrypted_${key}`, encryptedData);
-
-            // Create backup of entire storage
             await this.createBackup();
-            
             return true;
         } catch (err) {
             console.warn("Save failed:", err);
@@ -706,7 +698,6 @@ class EncryptedStorage {
                 return this.dataCache[key];
             }
 
-            // Try to load from localStorage
             const encryptedData = localStorage.getItem(`encrypted_${key}`);
             if (encryptedData) {
                 const decrypted = decrypt(encryptedData);
@@ -716,7 +707,6 @@ class EncryptedStorage {
                     return data;
                 }
             }
-
             return fallback;
         } catch (err) {
             console.warn("Load failed for key:", key, err);
@@ -736,7 +726,6 @@ class EncryptedStorage {
             const encryptedBackup = encrypt(JSON.stringify(backupData));
             localStorage.setItem('encrypted_storage_backup', encryptedBackup);
 
-            // If File System Access is available, save to .dat file
             if ('showSaveFilePicker' in window && this.fileHandle) {
                 try {
                     const writable = await this.fileHandle.createWritable();
@@ -761,8 +750,6 @@ class EncryptedStorage {
             };
 
             const encryptedData = encrypt(JSON.stringify(exportData));
-            
-            // Create download link
             const blob = new Blob([encryptedData], { type: 'application/octet-stream' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -770,7 +757,6 @@ class EncryptedStorage {
             link.download = `study-data-${Date.now()}.dat`;
             link.click();
             URL.revokeObjectURL(url);
-
             return true;
         } catch (err) {
             console.warn("Export failed:", err);
@@ -784,9 +770,7 @@ class EncryptedStorage {
                 const [fileHandle] = await window.showOpenFilePicker({
                     types: [{
                         description: 'Study Data Files',
-                        accept: {
-                            'application/octet-stream': ['.dat']
-                        }
+                        accept: { 'application/octet-stream': ['.dat'] }
                     }]
                 });
 
@@ -799,7 +783,6 @@ class EncryptedStorage {
                     this.dataCache = importedData.data || {};
                     this.dataIndex = importedData.index || {};
                     
-                    // Save to localStorage
                     Object.keys(this.dataCache).forEach(key => {
                         const encrypted = encrypt(JSON.stringify(this.dataCache[key]));
                         localStorage.setItem(`encrypted_${key}`, encrypted);
@@ -823,67 +806,42 @@ class EncryptedStorage {
     async clearAll() {
         this.dataCache = {};
         this.dataIndex = {};
-        
-        // Clear localStorage
         const keys = Object.keys(localStorage);
         keys.forEach(key => {
             if (key.startsWith('encrypted_')) {
                 localStorage.removeItem(key);
             }
         });
-        
         localStorage.removeItem('encrypted_storage_backup');
         await this.createBackup();
     }
 }
 
-// Global storage instance
 const encryptedStorage = new EncryptedStorage();
 
-// Updated storage functions
-const saveToCache = async (key, data) => {
-    return await encryptedStorage.save(key, data);
-};
+const saveToCache = async (key, data) => await encryptedStorage.save(key, data);
+const getFromCache = async (key, fallback = null) => await encryptedStorage.load(key, fallback);
+const saveLS = async (key, value) => await encryptedStorage.save(key, value);
+const loadLS = async (key, fallback = null) => await encryptedStorage.load(key, fallback);
 
-const getFromCache = async (key, fallback = null) => {
-    return await encryptedStorage.load(key, fallback);
-};
-
-// Enhanced LocalStorage helper with encryption
-const saveLS = async (key, value) => {
-    return await encryptedStorage.save(key, value);
-};
-
-const loadLS = async (key, fallback = null) => {
-    return await encryptedStorage.load(key, fallback);
-};
-
-// Auto-indexing and data management
 const autoIndex = () => {
     const index = encryptedStorage.getIndex();
-    console.log("Data Index:", index);
     return index;
 };
 
-// Auto-initialize when page loads
 window.addEventListener('load', async () => {
-    // Wait for storage to be ready
     while (!encryptedStorage.isReady) {
         await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
     console.log("Encrypted storage ready!");
     autoIndex();
-    
-    // Show storage controls in console
     window.encryptedStorage = encryptedStorage;
-    console.log("Storage controls available: window.encryptedStorage");
 });
 
         const { useState, useEffect, useRef } = React;
 
-        // Configuration - Use backend API
-        const API_BASE = 'https://study-planner-selvavelayutham5899-ciigl12k.apn.leapcell.dev';
+        // Configuration - Set to local backend URL
+        const API_BASE = 'http://localhost:5000';
 
         // Toast system
         const showToast = (message, type = 'info') => {
@@ -1081,7 +1039,7 @@ window.addEventListener('load', async () => {
             );
         };
 
-        // StudyCalendar Component with encrypted storage
+        // StudyCalendar Component
         const StudyCalendar = () => {
             const [subjects, setSubjects] = useState(['Math', 'Science', 'Literature', 'History']);
             const [newSubject, setNewSubject] = useState('');
@@ -1194,7 +1152,6 @@ window.addEventListener('load', async () => {
                         <h2 className="card-title gradient-text">Weekly Plan</h2>
                     </div>
 
-                    {/* Subject management */}
                     <div style={{ marginBottom: "1rem" }}>
                         <h4>Manage Subjects</h4>
 
@@ -1227,7 +1184,6 @@ window.addEventListener('load', async () => {
                         </div>
                     </div>
 
-                    {/* Weekly schedule */}
                     <div>
                         {schedule.length > 0 && days.map((day, index) => {
                             const isComplete = subjects.every(
@@ -1243,10 +1199,7 @@ window.addEventListener('load', async () => {
                                     )}
 
                                     {subjects.map(subject => (
-                                        <div
-                                            key={subject}
-                                            className="schedule-subject"
-                                        >
+                                        <div key={subject} className="schedule-subject">
                                             <span>{subject}</span>
                                             <div style={{ display: "flex", gap: "0.5rem" }}>
                                                 <input
@@ -1254,7 +1207,7 @@ window.addEventListener('load', async () => {
                                                     step="0.1"
                                                     min="0"
                                                     max="8"
-                                                    value={schedule[index][subject]}
+                                                    value={schedule[index] ? schedule[index][subject] : 0.5}
                                                     className="schedule-input"
                                                     onChange={e =>
                                                         updateHours(index, subject, parseFloat(e.target.value) || 0)
@@ -1277,7 +1230,7 @@ window.addEventListener('load', async () => {
             );
         };
 
-        // Music Component with encrypted storage
+        // Music Component
         const MusicMood = () => {
             const [activeMood, setActiveMood] = useState(null);
             const [language, setLanguage] = useState("english");
@@ -1380,7 +1333,7 @@ window.addEventListener('load', async () => {
             );
         };
 
-        // Theme Selector Component with encrypted storage
+        // Theme Selector Component
         const ThemeSelector = () => {
             const [activeTheme, setActiveTheme] = useState('purple');
 
@@ -1526,7 +1479,7 @@ window.addEventListener('load', async () => {
                                     askAI();
                                 }
                             }}
-                            placeholder="Ask me anything about your studies! For example:&#10;• Explain quantum physics concepts&#10;• Create a study plan for calculus&#10;• Summarize the causes of World War I&#10;&#10;Press Ctrl+Enter to send"
+                            placeholder="Ask me anything about your studies! For example:&#10;• Explain quantum physics concepts&#10;• Create a study plan for calculus&#10;• Summarize key topics&#10;&#10;Press Ctrl+Enter to send"
                             className="textarea"
                             disabled={isLoading}
                         />
@@ -1566,7 +1519,7 @@ window.addEventListener('load', async () => {
             );
         };
 
-        // Main App Component with storage controls
+        // Main App Component
         const App = () => {
             const [showStorageControls, setShowStorageControls] = useState(false);
 
@@ -1664,7 +1617,8 @@ window.addEventListener('load', async () => {
             );
         };
 
-        // Render the app
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
+</body>
+</html>
